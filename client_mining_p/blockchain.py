@@ -105,7 +105,7 @@ class Blockchain(object):
     @staticmethod
     def valid_proof(block_string, proof):
         """
-        Validates the Proof:  Does hash(block_string, proof) contain 3
+        Validates the Proof:  Does hash(block_string + proof) contain 3
         leading zeroes?  Return true if the proof is valid
         :param block_string: <string> The stringified block to use to
         check in combination with `proof`
@@ -116,7 +116,7 @@ class Blockchain(object):
         """
         guess = f"{block_string}{proof}".encode()
         guess_hash = hashlib.sha256(guess).hexdigest()
-        return guess_hash[:6] == "000000"
+        return guess_hash[:3] == "000"
 
 # Instantiate our Node
 app = Flask(__name__)
@@ -139,19 +139,19 @@ def mine():
       response = {'message': 'Must constain proof and id'}
       return jsonify(response), 400
 
-    proof = data['proof']
+    submitted_proof = data['proof']
 
     # Determine if the proof is valid
     last_block = blockchain.last_block
     last_block_string = json.dumps(last_block, sort_keys=True)
 
-    if blockchain.valid_proof(last_block_string, proof):
+    if blockchain.valid_proof(last_block_string, submitted_proof):
         blockchain.new_transaction(sender='0', recipient=data['id'].strip(), amount=1)
 
 
         # Forge the new Block by adding it to the chain with the proof
         previous_hash = blockchain.hash(blockchain.last_block)
-        block = blockchain.new_block(proof, previous_hash)
+        block = blockchain.new_block(submitted_proof, previous_hash)
 
 
         response = {
@@ -166,7 +166,7 @@ def mine():
         return jsonify(response), 200 
     else:
       response = {'message': 'Invalid proof'}
-      return jsonify(response), 400
+      return jsonify(response), 200
 
 
 @app.route('/chain', methods=['GET'])
@@ -176,6 +176,9 @@ def full_chain():
         'chain': blockchain.chain
     }
     return jsonify(response), 200
+
+# Add an endpoint called 'last_block' that returns the
+# last block in the chain
 
 @app.route('/last_block', methods=['GET'])
 def get_last_block():

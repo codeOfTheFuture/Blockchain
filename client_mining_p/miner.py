@@ -34,7 +34,7 @@ def valid_proof(block_string, proof):
     """
     guess = f"{block_string}{proof}".encode()
     guess_hash = hashlib.sha256(guess).hexdigest()
-    return guess_hash[:6] == "000000"
+    return guess_hash[:3] == "000"
 
 
 if __name__ == '__main__':
@@ -42,14 +42,16 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         node = sys.argv[1]
     else:
-        node = "http://localhost:5000"
+        node = "http://localhost:3000"
 
     # Load ID
     f = open("my_id.txt", "r")
     id = f.read()
     print("ID is", id)
     f.close()
-    coins = 0
+    
+    coins_mined = 0
+    print("Starting Mining")
 
     # Run forever until interrupted
     while True:
@@ -66,19 +68,27 @@ if __name__ == '__main__':
         # TODO: Get the block from `data` and use it to look for a new proof
         # new_proof = ???
         block = data['last_block']
-        new_proof = proof_of_work(block)
 
+        new_proof = proof_of_work(block)
+        print(f"Proof found: {new_proof}")
+        
         # When found, POST it to the server {"proof": new_proof, "id": id}
         post_data = {"proof": new_proof, "id": id}
 
         r = requests.post(url=node + "/mine", json=post_data)
-        data = r.json()
+        try:
+            data = r.json()
+        except ValueError:
+            print("Error:  Non-json response")
+            print("Response returned:")
+            print(r)
+            break
 
         # TODO: If the server responds with a 'message' 'New Block Forged'
         # add 1 to the number of coins mined and print it.  Otherwise,
         # print the message from the server.
         if data['message'] == 'New Block Forged':
-            coins += 1
-            print(f'{coins} coins')
+            coins_mined += 1
+            print(f'{coins_mined} coins')
         else:
             print(data['message'])
